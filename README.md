@@ -138,3 +138,9 @@ Output fase 1-5 tersimpan di:
 - `app/frontend/`
 - `tests/test_dean_jett_fox.py`
 - `tests/test_backend_api.py`
+
+## Hasil Kolaborasi:
+- 18223026 Jacob Reinhard Marudut Siagian
+- 18223028 Stevan Einer Bonagabe
+- 18223080 Michael Ballard Isaiah Silaen
+- 18223104 Muhammad Khalfani Shaquille Indrajaya
