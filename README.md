@@ -80,15 +80,16 @@ notebooks/dean_jett_fox_flow_cytometry.ipynb
 
 ## Menjalankan Aplikasi
 
-Jalankan backend + frontend bersamaan:
+Jalankan backend + frontend bersamaan (dari root):
 
 ```powershell
 npm run dev
 ```
 
 Alamat lokal:
+Frontend lokal tersedia di `http://localhost:5173/`,
 
-Frontend tersedia di `https://djf-demo.khalshaqzzy.site`, 
+Frontend deployment tersedia di `https://djf-demo.khalshaqzzy.site`, 
 
 ### Endpoint API
 
