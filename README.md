@@ -21,7 +21,7 @@ Dataset utama adalah Zenodo 14928071:
 
 FlowRepository FR-FCM-ZZMY hanya dicatat sebagai dataset sekunder/cadangan karena download raw file membutuhkan login.
 
-## Phase 1-4
+## Phase 1-5
 
 Jalankan dari root repo:
 
@@ -48,7 +48,7 @@ Model default adalah `djf_polynomial_broadened_v2`: G1 dan G2/M sebagai Gaussian
 Backend FastAPI:
 
 ```powershell
-uvicorn app.backend.main:app --reload
+uvicorn app.backend.main:app --host 127.0.0.1 --port 8000 --reload
 ```
 
 Endpoint lokal:
@@ -56,6 +56,7 @@ Endpoint lokal:
 - `http://127.0.0.1:8000/health`
 - `http://127.0.0.1:8000/datasets`
 - `POST http://127.0.0.1:8000/fit`
+- `POST http://127.0.0.1:8000/fit/csv`
 
 Contoh request fitting dataset demo:
 
@@ -65,13 +66,32 @@ Contoh request fitting dataset demo:
 }
 ```
 
+Upload CSV untuk `/fit/csv` memakai multipart form field `file` dengan format `bin,count`, `bins,counts`, atau dua kolom numerik tanpa header. Field opsional `g1_mean` dan `g2_mean` memakai satuan raw bin.
+
+React virtual lab:
+
+```powershell
+cd app\frontend
+npm install
+npm run dev -- --host 127.0.0.1 --port 5173
+```
+
+Frontend lokal:
+
+- `http://127.0.0.1:5173`
+
+Frontend memakai `VITE_API_BASE_URL` bila ingin mengganti alamat backend; default-nya `http://127.0.0.1:8000`.
+
 Validasi:
 
 ```powershell
-pytest
+pytest -q
+cd app\frontend
+npm run test
+npm run build
 ```
 
-Output fase 1-4 tersimpan di:
+Output fase 1-5 tersimpan di:
 
 - `data/metadata/dataset_sources.md`
 - `data/raw/zenodo/14928071/`
@@ -79,5 +99,6 @@ Output fase 1-4 tersimpan di:
 - `data/processed/zenodo_14928071_djf_fit_summary.csv`
 - `models/dean_jett_fox.py`
 - `app/backend/`
+- `app/frontend/`
 - `tests/test_dean_jett_fox.py`
 - `tests/test_backend_api.py`
