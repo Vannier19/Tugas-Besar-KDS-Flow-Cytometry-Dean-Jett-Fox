@@ -1,34 +1,67 @@
-# Tugas-Besar-KDS-Flow-Cytometry-Dean-Jett-Fox
+# IF3211 Domain-Specific Computation
 
-Project IF3211 untuk estimasi distribusi fase siklus sel dari data flow cytometry menggunakan model Dean-Jett-Fox.
+Tugas besar untuk mata kuliah **IF3211 Domain-Specific Computation** dengan topik **Siklus Sel dan Meiosis**.
 
-## Setup
+Judul proyek:
+**Estimasi Distribusi Fase Siklus Sel dari Data Flow Cytometry Menggunakan Model Dean–Jett–Fox**
 
-Prasyarat lokal:
+## Ringkasan
 
-- Node.js dan npm
-- `uv` untuk environment Python backend
+Proyek ini memproses data flow cytometry (DNA content) menjadi histogram, lalu melakukan fitting menggunakan model **Dean–Jett–Fox (DJF)** untuk mengestimasi proporsi fase siklus sel:
 
-Install semua dependency dari root repo:
+- **G1**
+- **S**
+- **G2/M**
+
+Di repo ini juga tersedia aplikasi web sederhana:
+
+- **Backend**: FastAPI (API untuk dataset dan fitting)
+- **Frontend**: React + Vite (UI untuk mencoba fitting dan melihat hasil)
+
+## Prasyarat
+
+- Node.js + npm
+- Python (disarankan Python 3.10+)
+- `uv` (dipakai untuk membuat venv dan menjalankan backend)
+
+Catatan: repo ini sengaja dibuat supaya setup bisa dilakukan cukup dari satu perintah `npm install`.
+
+## Instalasi
+
+Jalankan dari root repository:
 
 ```powershell
 npm install
 ```
 
-## Dataset Utama
+Perintah ini akan:
 
-Dataset utama adalah Zenodo 14928071:
+- Membuat virtual environment Python di `.venv` (via `uv`)
+- Meng-install dependency Python dari `requirements.txt`
+- Meng-install dependency frontend di `app/frontend`
+
+Jika kamu tidak memakai `uv`, alternatif paling sederhana:
+
+```powershell
+python -m venv .venv
+.\.venv\Scripts\Activate.ps1
+pip install -r requirements.txt
+npm --prefix app/frontend install
+```
+
+## Dataset
+
+Dataset utama berasal dari Zenodo (record 14928071):
 
 - Record: <https://zenodo.org/records/14928071>
 - API metadata: <https://zenodo.org/api/records/14928071>
 - DOI: `10.5281/zenodo.14928071`
-- Channel awal untuk histogram DNA/PI: `PI-A`
 
-FlowRepository FR-FCM-ZZMY hanya dicatat sebagai dataset sekunder/cadangan karena download raw file membutuhkan login.
+Channel awal yang dipakai untuk histogram DNA/PI: `PI-A`.
 
-## Workflow Proyek
+## Alur Kerja Data (opsional)
 
-Jalankan dari root repo:
+Jika ingin mengambil data mentah dan menyiapkan histogram secara lokal, jalankan dari root repo:
 
 ```powershell
 python scripts\download_zenodo_14928071.py
@@ -36,21 +69,15 @@ python scripts\inspect_fcs_metadata.py
 python scripts\preprocess_zenodo_histograms.py
 ```
 
-Notebook analisis:
+Notebook eksplorasi/analisis ada di:
 
 ```text
 notebooks/dean_jett_fox_flow_cytometry.ipynb
 ```
 
-Model reusable:
+## Menjalankan Aplikasi
 
-```python
-from models.dean_jett_fox import fit_dean_jett_fox
-```
-
-Model default adalah `djf_polynomial_broadened_v2`: G1 dan G2/M sebagai Gaussian berbasis area, S phase sebagai polynomial orde dua dengan broadening, serta komponen debris/background sederhana.
-
-Backend FastAPI dan React virtual lab dapat dijalankan bersama dari root repo:
+Jalankan backend + frontend bersamaan:
 
 ```powershell
 npm run dev
@@ -58,17 +85,16 @@ npm run dev
 
 Alamat lokal:
 
-- Frontend: `http://127.0.0.1:5173`
-- Backend: `http://127.0.0.1:8000`
+Frontend tersedia di `https://djf-demo.khalshaqzzy.site`, 
 
-Endpoint backend:
+### Endpoint API
 
-- `http://127.0.0.1:8000/health`
-- `http://127.0.0.1:8000/datasets`
-- `POST http://127.0.0.1:8000/fit`
-- `POST http://127.0.0.1:8000/fit/csv`
+- `GET /health`
+- `GET /datasets`
+- `POST /fit`
+- `POST /fit/csv`
 
-Contoh request fitting dataset demo:
+Contoh request fitting untuk dataset demo:
 
 ```json
 {
@@ -76,58 +102,53 @@ Contoh request fitting dataset demo:
 }
 ```
 
-Upload CSV untuk `/fit/csv` memakai multipart form field `file` dengan format `bin,count`, `bins,counts`, atau dua kolom numerik tanpa header. Field opsional `g1_mean` dan `g2_mean` memakai satuan raw bin.
+Untuk `POST /fit/csv`, upload file CSV sebagai multipart form field `file`.
+Format yang diterima:
 
-Script root yang tersedia:
+- header `bin,count` atau `bins,counts`, atau
+- dua kolom numerik tanpa header
 
-```powershell
-npm run dev
-npm run dev:backend
-npm run dev:frontend
-npm test
-npm run test:backend
-npm run test:frontend
+Field opsional `g1_mean` dan `g2_mean` menggunakan satuan bin (raw).
+
+### Model Dean–Jett–Fox
+
+Fungsi fitting utama ada di:
+
+```python
+from models.dean_jett_fox import fit_dean_jett_fox
 ```
 
-Frontend memakai `VITE_API_BASE_URL` bila ingin mengganti alamat backend. Default development adalah `http://127.0.0.1:8000`; build production memakai path same-origin `/api`.
+Model default yang dipakai adalah `djf_polynomial_broadened_v2`:
 
-Validasi:
+- G1 dan G2/M dimodelkan sebagai Gaussian (berbasis area)
+- S-phase dimodelkan sebagai polinomial orde 2 dengan broadening
+- Ada komponen debris/background sederhana
+
+## Testing
+
+Menjalankan seluruh test (backend + frontend):
 
 ```powershell
 npm test
+```
+
+Validasi build frontend:
+
+```powershell
 npm --prefix app/frontend run build
 ```
 
-## Deployment Docker Compose
+## Docker (opsional)
 
-Deployment production berada di folder `deploy/` dan tidak membutuhkan `.env`. Konfigurasi domain, email ACME, dan routing sudah eksplisit di file deployment.
-
-Prasyarat server:
-
-- DNS `djf-demo.khalshaqzzy.site` mengarah ke server deployment
-- Port 80 dan 443 terbuka
-- Docker dan Docker Compose tersedia
-
-Jalankan dari root repo:
+Konfigurasi Docker Compose ada di folder `deploy/`. Ini berguna kalau ingin menjalankan versi "production-like" secara lokal atau di server.
 
 ```powershell
 docker compose -f deploy/docker-compose.yml up -d --build
 ```
 
-Caddy akan mengambil sertifikat HTTPS dengan email `khalshaqzzy@gmail.com`. Frontend tersedia di `https://djf-demo.khalshaqzzy.site`, sedangkan backend diproxy pada path `/api`:
+Jika ingin dipakai untuk domain publik/HTTPS, sesuaikan konfigurasi reverse proxy di file dalam folder `deploy/` sesuai kebutuhan.
 
-- `https://djf-demo.khalshaqzzy.site/api/health`
-- `https://djf-demo.khalshaqzzy.site/api/datasets`
-- `POST https://djf-demo.khalshaqzzy.site/api/fit`
-- `POST https://djf-demo.khalshaqzzy.site/api/fit/csv`
-
-Health check deployment:
-
-```powershell
-curl https://djf-demo.khalshaqzzy.site/api/health
-```
-
-Output fase 1-5 tersimpan di:
+## Artefak Penting
 
 - `data/metadata/dataset_sources.md`
 - `data/raw/zenodo/14928071/`
@@ -139,7 +160,8 @@ Output fase 1-5 tersimpan di:
 - `tests/test_dean_jett_fox.py`
 - `tests/test_backend_api.py`
 
-## Hasil Kolaborasi:
+## Anggota Kelompok
+
 - 18223026 Jacob Reinhard Marudut Siagian
 - 18223028 Stevan Einer Bonagabe
 - 18223080 Michael Ballard Isaiah Silaen
