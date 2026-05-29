@@ -113,3 +113,66 @@ def test_fit_with_unknown_dataset_id_returns_404() -> None:
 
     assert response.status_code == 404
     assert "dataset_id tidak ditemukan" in response.json()["detail"]
+
+
+def make_csv(include_header: bool = True) -> str:
+    rows = ["bin,count"] if include_header else []
+    for index in range(80):
+        x = index / 79
+        g1 = 900.0 * math_exp(-0.5 * ((x - 0.32) / 0.055) ** 2)
+        s = 220.0 if 0.32 <= x <= 0.64 else 0.0
+        g2 = 320.0 * math_exp(-0.5 * ((x - 0.64) / 0.070) ** 2)
+        rows.append(f"{index},{g1 + s + g2 + 4.0:.6f}")
+    return "\n".join(rows)
+
+
+def math_exp(value: float) -> float:
+    import math
+
+    return math.exp(value)
+
+
+def test_fit_csv_accepts_header_csv_upload() -> None:
+    response = client.post(
+        "/fit/csv",
+        files={"file": ("histogram.csv", make_csv().encode("utf-8"), "text/csv")},
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["fit_id"] == "uploaded-csv-default"
+    assert sum(payload["phase_percentages"].values()) == pytest.approx(100.0, abs=1e-6)
+    assert len(payload["series"]["bins"]) == 80
+
+
+def test_fit_csv_accepts_no_header_csv_and_manual_parameters() -> None:
+    response = client.post(
+        "/fit/csv",
+        data={"g1_mean": "25", "g2_mean": "51"},
+        files={"file": ("histogram.csv", make_csv(include_header=False).encode("utf-8"), "text/csv")},
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["parameters"]["g2_mean"] > payload["parameters"]["g1_mean"]
+    assert len(payload["series"]["observed"]) == 80
+
+
+@pytest.mark.parametrize(
+    ("filename", "content", "match"),
+    [
+        ("histogram.txt", b"bin,count\n1,2\n2,3\n3,4\n", ".csv"),
+        ("histogram.csv", b"bin,count\n1,2\n2,-3\n3,4\n", "negatif"),
+        ("histogram.csv", b"bin,count\n1,2\n2,nope\n3,4\n", "non-numeric"),
+        ("histogram.csv", b"bin,count\n1,2\n2,3\n", "minimal 3"),
+        ("histogram.csv", b"channel,value\n1,2\n2,3\n3,4\n", "header"),
+    ],
+)
+def test_fit_csv_rejects_invalid_uploads(filename: str, content: bytes, match: str) -> None:
+    response = client.post(
+        "/fit/csv",
+        files={"file": (filename, content, "text/csv")},
+    )
+
+    assert response.status_code == 400
+    assert match in response.json()["detail"]

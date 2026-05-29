@@ -1,11 +1,13 @@
 from __future__ import annotations
 
 from collections.abc import Sequence
+from typing import Annotated
 from typing import Any
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, File, Form, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 
+from app.backend.csv_histograms import parse_histogram_csv
 from app.backend.datasets import DatasetNotFoundError, get_histogram_by_id, list_dataset_summaries
 from app.backend.schemas import DatasetsResponse, FitRequest, FitResponse, HealthResponse
 from models.dean_jett_fox import fit_dean_jett_fox
@@ -48,19 +50,30 @@ def _scale_initial_parameters(
     return scaled
 
 
-def _fit_response(fit_id: str, bins: Sequence[float], counts: Sequence[float], request: FitRequest) -> FitResponse:
-    initial = None
+def _initial_parameters_from_request(request: FitRequest) -> dict[str, float | None] | None:
     if request.initial_parameters:
         if hasattr(request.initial_parameters, "model_dump"):
-            initial = request.initial_parameters.model_dump()
-        else:
-            initial = request.initial_parameters.dict()
-    scaled_initial = _scale_initial_parameters(bins, initial)
+            return request.initial_parameters.model_dump()
+        return request.initial_parameters.dict()
+    return None
+
+
+def _fit_histogram(
+    fit_id: str,
+    bins: Sequence[float],
+    counts: Sequence[float],
+    initial_parameters: dict[str, float | None] | None = None,
+) -> FitResponse:
+    scaled_initial = _scale_initial_parameters(bins, initial_parameters)
     try:
         result = fit_dean_jett_fox(bins, counts, initial_parameters=scaled_initial)
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
     return FitResponse(fit_id=fit_id, **result)
+
+
+def _fit_response(fit_id: str, bins: Sequence[float], counts: Sequence[float], request: FitRequest) -> FitResponse:
+    return _fit_histogram(fit_id, bins, counts, _initial_parameters_from_request(request))
 
 
 @app.get("/health", response_model=HealthResponse)
@@ -101,3 +114,18 @@ def fit(request: FitRequest) -> FitResponse:
         counts=request.histogram.counts,
         request=request,
     )
+
+
+@app.post("/fit/csv", response_model=FitResponse)
+async def fit_csv(
+    file: Annotated[UploadFile, File(...)],
+    g1_mean: Annotated[float | None, Form()] = None,
+    g2_mean: Annotated[float | None, Form()] = None,
+) -> FitResponse:
+    content = await file.read()
+    try:
+        bins, counts = parse_histogram_csv(content, filename=file.filename)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    initial_parameters = {"g1_mean": g1_mean, "g2_mean": g2_mean}
+    return _fit_histogram("uploaded-csv-default", bins, counts, initial_parameters)
