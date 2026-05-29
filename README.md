@@ -5,6 +5,9 @@ Tugas besar untuk mata kuliah **IF3211 Domain-Specific Computation** dengan topi
 Judul proyek:
 **Estimasi Distribusi Fase Siklus Sel dari Data Flow Cytometry Menggunakan Model Dean–Jett–Fox**
 
+## Youtube Demo Link
+https://youtu.be/FElbm6bsUHk?si=KQ6mD2t-6HVXlBDU
+
 ## Ringkasan
 
 Proyek ini memproses data flow cytometry (DNA content) menjadi histogram, lalu melakukan fitting menggunakan model **Dean–Jett–Fox (DJF)** untuk mengestimasi proporsi fase siklus sel:
